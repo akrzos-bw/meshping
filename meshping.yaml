@@ -1,0 +1,59 @@
+---
+
+- name: Runs a ping mesh and analyzes the output for =>10ms spikes
+  hosts: all
+  gather_facts: false
+  vars:
+    ping_count: 1200
+  tasks:
+    - name: Get timestamp
+      command: "date -u +%Y%m%d-%H%M%S"
+      delegate_to: localhost
+      register: current_ts
+      run_once: true
+
+    - name: Clear meshping log directory
+      file:
+        path: meshping/logs
+        state: absent
+
+    - name: Create meshping directories
+      file:
+        path: "{{item}}"
+        state: directory
+      with_items:
+        - meshping
+        - meshping/logs
+
+    - name: Template out the script to each machine
+      template:
+        src: templates/meshping.sh.j2
+        dest: meshping/meshping.sh
+        mode: 0764
+
+    - name: Run meshping.sh
+      shell: |
+        ./meshping/meshping.sh
+
+    - name: Collect meshping logs
+      synchronize:
+        src: meshping/logs/
+        dest: "artifacts/{{current_ts.stdout}}-{{inventory_hostname.split('.')[1] | lower}}"
+        mode: pull
+
+    - name: Flag on logs
+      shell: |
+        grep "Large Latencies" artifacts/{{current_ts.stdout}}-{{inventory_hostname.split('.')[1] | lower}}/*_runner.log -A100
+      delegate_to: localhost
+      register: values
+      run_once: true
+
+    - name: Print large Latencies
+      debug:
+        msg: "{{values.stdout_lines}}"
+      run_once: true
+
+    - name: Clean meshping entirely
+      file:
+        path: meshping/
+        state: absent

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+start_time=$(date +"%y%m%d-%H%M%S")
+host="$(hostname -s)"
+log_file="$(dirname $0)/logs/${host}_${start_time}"
+runner_log="${log_file}_runner.log"
+
+echo "$(date -u) :: Starting on ${host}, pinging {{ping_count}} times" | tee -a ${runner_log}
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+time ping -c {{ping_count}} {{host}} | tee -a "${log_file}_{{host.split(".")[0] | lower}}.log" &
+{% endif %}
+{% endfor %}
+wait
+echo "$(date -u) :: Completed on ${host}" | tee -a ${runner_log}
+
+echo "" | tee -a ${runner_log}
+echo "$(date -u) :: Summary ${host}" | tee -a ${runner_log}
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+grep "ping statistics" ${log_file}_{{host.split(".")[0] | lower}}.log -A3 | tee -a ${runner_log}
+{% endif %}
+{% endfor %}
+
+echo "" | tee -a ${runner_log}
+echo "$(date -u) :: Large Latencies" | tee -a ${runner_log}
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+egrep "time\=[1-9]+[0-9]+" ${log_file}_{{host.split(".")[0]  | lower}}.log -A2 -B2 | tee -a ${runner_log}
+{% endif %}
+{% endfor %}
