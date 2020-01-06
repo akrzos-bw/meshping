@@ -8,7 +8,7 @@ runner_log="${log_file}_runner.log"
 echo "$(date -u) :: Starting on ${host}, pinging {{ping_count}} times" | tee -a ${runner_log}
 {% for host in groups['all'] %}
 {% if host != inventory_hostname %}
-time ping -c {{ping_count}} {{host}} | tee -a "${log_file}_{{host.split(".")[0] | lower}}.log" &
+time ping -D -c {{ping_count}} {{host}} | tee -a "${log_file}_{{host.split(".")[0] | lower}}.log" &
 {% endif %}
 {% endfor %}
 wait

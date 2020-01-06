@@ -35,15 +35,20 @@
       shell: |
         ./meshping/meshping.sh
 
+    - name: Create local artifact log directory
+      file:
+        path: "artifacts/{{inventory_hostname.split('.')[1] | lower}}-{{current_ts.stdout}}"
+        state: directory
+
     - name: Collect meshping logs
       synchronize:
         src: meshping/logs/
-        dest: "artifacts/{{current_ts.stdout}}-{{inventory_hostname.split('.')[1] | lower}}"
+        dest: "artifacts/{{inventory_hostname.split('.')[1] | lower}}-{{current_ts.stdout}}"
         mode: pull
 
-    - name: Flag on logs
+    - name: Grab large latencies
       shell: |
-        grep "Large Latencies" artifacts/{{current_ts.stdout}}-{{inventory_hostname.split('.')[1] | lower}}/*_runner.log -A100
+        grep "Large Latencies" artifacts/{{inventory_hostname.split('.')[1] | lower}}-{{current_ts.stdout}}/*_runner.log -A100
       delegate_to: localhost
       register: values
       run_once: true
